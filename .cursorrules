@@ -1,0 +1,16 @@
+﻿# Project Rules
+
+## Stack
+- MERN (MongoDB, Express, React, Node.js)
+- Frontend: React
+- Backend: Express REST API
+
+## Conventions
+- Conventional Commits for all commit messages
+- Functional components + hooks only (no class components)
+- camelCase for variables/functions, PascalCase for components
+- Environment variables in .env, never committed
+
+## Notes for AI assistant
+- Prefer explicit error handling over silent failures
+- Keep components small and colocate styles
