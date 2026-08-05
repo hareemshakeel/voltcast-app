@@ -44,7 +44,7 @@ export async function getForecast(latitude, longitude) {
   )
   url.searchParams.set(
     'daily',
-    'weather_code,temperature_2m_max,temperature_2m_min',
+    'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
   )
   url.searchParams.set('forecast_days', '5')
   url.searchParams.set('timezone', 'auto')
@@ -81,6 +81,7 @@ export async function getForecast(latitude, longitude) {
           weatherCode: daily.weather_code[index],
           temperatureMax: daily.temperature_2m_max[index],
           temperatureMin: daily.temperature_2m_min[index],
+          precipitationChance: daily.precipitation_probability_max[index],
         }))
       : [],
   }
