@@ -30,7 +30,6 @@ export async function searchCity(query) {
     admin1: city.admin1,
     latitude: city.latitude,
     longitude: city.longitude,
-    timezone: city.timezone,
   }))
 }
 
@@ -39,50 +38,121 @@ export async function getForecast(latitude, longitude) {
   url.searchParams.set('latitude', latitude)
   url.searchParams.set('longitude', longitude)
   url.searchParams.set(
-    'current',
-    'temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m',
-  )
-  url.searchParams.set(
     'daily',
-    'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    [
+      'temperature_2m_max',
+      'temperature_2m_min',
+      'apparent_temperature_max',
+      'weather_code',
+      'uv_index_max',
+      'precipitation_sum',
+      'windspeed_10m_max',
+      'relative_humidity_2m_mean',
+      'cloudcover_mean',
+      'sunrise',
+      'sunset',
+    ].join(',')
   )
-  url.searchParams.set('forecast_days', '5')
+  url.searchParams.set('hourly', 'temperature_2m,weather_code')
   url.searchParams.set('timezone', 'auto')
+  url.searchParams.set('forecast_days', '5')
 
   const response = await fetch(url)
 
   if (!response.ok) {
-    throw new Error('Failed to load weather forecast.')
+    throw new Error('Failed to fetch forecast.')
   }
 
   const data = await response.json()
-  const current = data.current ?? null
-  const daily = data.daily ?? null
+  return mapToForecastDays(data)
+}
 
-  return {
-    location: {
-      name: data.timezone ?? '',
-      latitude: data.latitude,
-      longitude: data.longitude,
-    },
-    current: current
-      ? {
-          temperature: current.temperature_2m,
-          weatherCode: current.weather_code,
-          humidity: current.relative_humidity_2m,
-          feelsLike: current.apparent_temperature,
-          windSpeed: current.wind_speed_10m,
-          time: current.time,
-        }
-      : null,
-    daily: daily
-      ? daily.time.map((date, index) => ({
-          date,
-          weatherCode: daily.weather_code[index],
-          temperatureMax: daily.temperature_2m_max[index],
-          temperatureMin: daily.temperature_2m_min[index],
-          precipitationChance: daily.precipitation_probability_max[index],
-        }))
-      : [],
-  }
+const WEATHERCODE_MAP = {
+  0: 'sunny',
+  1: 'sunny',
+  2: 'partly-cloudy',
+  3: 'cloudy',
+  45: 'cloudy',
+  48: 'cloudy',
+  51: 'rain',
+  53: 'rain',
+  55: 'rain',
+  56: 'rain',
+  57: 'rain',
+  61: 'rain',
+  63: 'rain',
+  65: 'rain',
+  66: 'rain',
+  67: 'rain',
+  71: 'rain',
+  73: 'rain',
+  75: 'rain',
+  80: 'rain',
+  81: 'rain',
+  82: 'rain',
+  95: 'rain',
+  96: 'rain',
+  99: 'rain',
+}
+
+function toCondition(code) {
+  return WEATHERCODE_MAP[code] ?? 'cloudy'
+}
+
+function formatClockTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function formatHourLabel(iso) {
+  return new Date(iso)
+    .toLocaleTimeString('en-US', { hour: 'numeric' })
+    .replace(' ', '')
+}
+
+function formatDayLabel(iso, index) {
+  if (index === 0) return 'Today'
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+function formatDateLabel(iso) {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function mapToForecastDays(data) {
+  const { daily, hourly } = data
+
+  return daily.time.map((dateStr, i) => {
+    const dayHours = hourly.time
+      .map((t, idx) => ({ t, idx }))
+      .filter(({ t }) => t.startsWith(dateStr))
+      .filter((_, idx) => idx % 3 === 0)
+      .slice(0, 5)
+
+    return {
+      label: formatDayLabel(dateStr, i),
+      date: formatDateLabel(dateStr),
+      condition: toCondition(daily.weather_code[i]),
+      tempMax: Math.round(daily.temperature_2m_max[i]),
+      tempMin: Math.round(daily.temperature_2m_min[i]),
+      feelsLike: Math.round(daily.apparent_temperature_max[i]),
+      uvIndex: Math.round(daily.uv_index_max[i]),
+      precipitation: Math.round(daily.precipitation_sum[i] * 10),
+      windSpeed: Math.round(daily.windspeed_10m_max[i]),
+      humidity: Math.round(daily.relative_humidity_2m_mean[i]),
+      cloudCover: Math.round(daily.cloudcover_mean[i]),
+      sunrise: formatClockTime(daily.sunrise[i]),
+      sunset: formatClockTime(daily.sunset[i]),
+      hourly: dayHours.map(({ t, idx }) => ({
+        time: formatHourLabel(t),
+        temp: Math.round(hourly.temperature_2m[idx]),
+        condition: toCondition(hourly.weather_code[idx]),
+      })),
+    }
+  })
 }
