@@ -33,6 +33,40 @@ export async function searchCity(query) {
   }))
 }
 
+// Current-conditions call for the homepage. Separate from getForecast below
+// (which returns the 5-day array used by the forecast page).
+export async function getCurrentWeather(latitude, longitude) {
+  const url = new URL(FORECAST_API_URL)
+  url.searchParams.set('latitude', latitude)
+  url.searchParams.set('longitude', longitude)
+  url.searchParams.set(
+    'current',
+    [
+      'temperature_2m',
+      'apparent_temperature',
+      'relative_humidity_2m',
+      'weather_code',
+      'wind_speed_10m',
+      'cloud_cover',
+    ].join(',')
+  )
+  url.searchParams.set(
+    'daily',
+    ['temperature_2m_max', 'temperature_2m_min', 'uv_index_max', 'sunrise', 'sunset'].join(',')
+  )
+  url.searchParams.set('timezone', 'auto')
+  url.searchParams.set('forecast_days', '1')
+
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch current weather.')
+  }
+
+  const data = await response.json()
+  return mapToCurrentWeather(data)
+}
+
 export async function getForecast(latitude, longitude) {
   const url = new URL(FORECAST_API_URL)
   url.searchParams.set('latitude', latitude)
@@ -122,6 +156,27 @@ function formatDateLabel(iso) {
     month: 'short',
     day: 'numeric',
   })
+}
+
+// Shapes the /forecast response (with `current` + 1-day `daily`) into the
+// flat object WeatherCard.jsx expects: `temperature` and `weatherCode`
+// (raw numeric code — WeatherCard does its own icon/label mapping).
+function mapToCurrentWeather(data) {
+  const { current, daily } = data
+
+  return {
+    temperature: Math.round(current.temperature_2m),
+    feelsLike: Math.round(current.apparent_temperature),
+    weatherCode: current.weather_code,
+    humidity: Math.round(current.relative_humidity_2m),
+    windSpeed: Math.round(current.wind_speed_10m),
+    cloudCover: Math.round(current.cloud_cover),
+    tempMax: Math.round(daily.temperature_2m_max[0]),
+    tempMin: Math.round(daily.temperature_2m_min[0]),
+    uvIndex: Math.round(daily.uv_index_max[0]),
+    sunrise: formatClockTime(daily.sunrise[0]),
+    sunset: formatClockTime(daily.sunset[0]),
+  }
 }
 
 function mapToForecastDays(data) {

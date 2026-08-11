@@ -1,3 +1,5 @@
+'use client';
+
 function getWeatherLabel(weatherCode) {
   const weatherMap = {
     0: 'Clear',
@@ -34,10 +36,13 @@ function getWeatherLabel(weatherCode) {
 }
 
 function WeatherIcon({ weatherCode }) {
+  const common = { viewBox: '0 0 48 48', className: 'h-16 w-16 sm:h-20 sm:w-20', 'aria-hidden': true }
+  const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinejoin: 'round' }
+
   if ([0, 1].includes(weatherCode)) {
     return (
-      <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-        <circle cx="24" cy="24" r="8" />
+      <svg {...common} {...stroke}>
+        <circle cx="24" cy="24" r="8" fill="currentColor" stroke="none" />
         <g strokeLinecap="round">
           <path d="M24 4v6" />
           <path d="M24 38v6" />
@@ -54,47 +59,60 @@ function WeatherIcon({ weatherCode }) {
 
   if ([2, 3, 45, 48].includes(weatherCode)) {
     return (
-      <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-        <path d="M17 32h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 32Z" />
+      <svg {...common} {...stroke}>
+        <path d="M17 32h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 32Z" fill="currentColor" stroke="none" />
       </svg>
     )
   }
 
   if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(weatherCode)) {
     return (
-      <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" />
-        <path d="M17 33v4" />
-        <path d="M25 33v4" />
-        <path d="M33 33v4" />
+      <svg {...common} {...stroke}>
+        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" fill="currentColor" stroke="none" />
+        <g strokeLinecap="round">
+          <path d="M17 33v4" />
+          <path d="M25 33v4" />
+          <path d="M33 33v4" />
+        </g>
       </svg>
     )
   }
 
   if ([71, 73, 75, 77, 85, 86].includes(weatherCode)) {
     return (
-      <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" />
-        <path d="M18 34h12" />
-        <path d="M21 33v5" />
-        <path d="M27 33v5" />
+      <svg {...common} {...stroke}>
+        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" fill="currentColor" stroke="none" />
+        <g strokeLinecap="round">
+          <path d="M18 34h12" />
+          <path d="M21 33v5" />
+          <path d="M27 33v5" />
+        </g>
       </svg>
     )
   }
 
   if ([95, 96, 99].includes(weatherCode)) {
     return (
-      <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" />
-        <path d="m18 32 4-7 2 5 3-7 3 6 2-3" />
+      <svg {...common} {...stroke}>
+        <path d="M17 26h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 26Z" fill="currentColor" stroke="none" />
+        <path d="m18 32 4-7 2 5 3-7 3 6 2-3" strokeLinecap="round" />
       </svg>
     )
   }
 
   return (
-    <svg viewBox="0 0 48 48" className="weather-card__icon" aria-hidden="true">
-      <path d="M17 30h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 30Z" />
+    <svg {...common} {...stroke}>
+      <path d="M17 30h16a7 7 0 0 0 0-14 10 10 0 0 0-19.5 2.2A6.5 6.5 0 0 0 17 30Z" fill="currentColor" stroke="none" />
     </svg>
+  )
+}
+
+function StatChip({ label, value }) {
+  return (
+    <div className="wc-chip flex flex-1 flex-col items-center gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#FFB627]/25 hover:bg-white/[0.06]">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-[#9A90B3]">{label}</p>
+      <p className="font-[Space_Grotesk] text-lg font-bold text-[#F6F3FC]">{value}</p>
+    </div>
   )
 }
 
@@ -103,28 +121,114 @@ export default function WeatherCard({ location, current }) {
     return null
   }
 
+  const locationSubtitle = [location.admin1, location.country].filter(Boolean).join(', ')
+
   return (
-    <section className="weather-card" aria-label="Current weather">
-      <h2 className="weather-card__city">{location.name}</h2>
-      <div className="weather-card__hero">
-        <WeatherIcon weatherCode={current.weatherCode} />
-        <p className="weather-card__temperature">{Math.round(current.temperature)}°</p>
+    <section
+      aria-label="Current weather"
+      className="wc-card relative w-full max-w-md overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.025] px-7 py-8 text-center backdrop-blur-md sm:px-9 sm:py-10"
+    >
+      <div className="wc-glow pointer-events-none absolute inset-0" />
+
+      <div className="relative">
+        <p className="font-[Space_Grotesk] text-2xl font-bold text-[#F6F3FC] sm:text-3xl">
+          {location.name}
+        </p>
+        {locationSubtitle && (
+          <p className="mt-1 text-xs text-[#9A90B3] sm:text-sm">{locationSubtitle}</p>
+        )}
+
+        <div className="mt-6 flex items-center justify-center gap-3 sm:gap-5">
+          <div className="wc-icon-glow text-[#FFB627]">
+            <WeatherIcon weatherCode={current.weatherCode} />
+          </div>
+          <p className="wc-shimmer font-[Space_Grotesk] text-7xl font-bold leading-none sm:text-8xl">
+            {Math.round(current.temperature)}°
+          </p>
+        </div>
+
+        <p className="mt-3 text-sm font-medium tracking-wide text-[#9A90B3] sm:text-base">
+          {getWeatherLabel(current.weatherCode)}
+          {typeof current.tempMax === 'number' && typeof current.tempMin === 'number' && (
+            <span className="ml-2 text-[#F6F3FC]/70">
+              H:{current.tempMax}° L:{current.tempMin}°
+            </span>
+          )}
+        </p>
+
+        <div className="mt-7 flex gap-3">
+          <StatChip label="Feels like" value={`${Math.round(current.feelsLike)}°`} />
+          <StatChip label="Humidity" value={`${Math.round(current.humidity)}%`} />
+          <StatChip label="Wind" value={`${Math.round(current.windSpeed)} km/h`} />
+        </div>
+
+        {(typeof current.uvIndex === 'number' || current.sunrise || current.sunset) && (
+          <div className="mt-3 flex gap-3">
+            {typeof current.uvIndex === 'number' && (
+              <StatChip label="UV index" value={current.uvIndex} />
+            )}
+            {current.sunrise && <StatChip label="Sunrise" value={current.sunrise} />}
+            {current.sunset && <StatChip label="Sunset" value={current.sunset} />}
+          </div>
+        )}
       </div>
-      <p className="weather-card__condition">{getWeatherLabel(current.weatherCode)}</p>
-      <dl className="weather-card__details">
-        <div>
-          <dt>Feels like</dt>
-          <dd>{Math.round(current.feelsLike)}°</dd>
-        </div>
-        <div>
-          <dt>Humidity</dt>
-          <dd>{Math.round(current.humidity)}%</dd>
-        </div>
-        <div>
-          <dt>Wind</dt>
-          <dd>{Math.round(current.windSpeed)} km/h</dd>
-        </div>
-      </dl>
+
+      <style jsx>{`
+        .wc-card {
+          animation: wc-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+          box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.55);
+        }
+        @keyframes wc-card-in {
+          from {
+            opacity: 0;
+            transform: translateY(14px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+
+        .wc-glow {
+          background: radial-gradient(circle at 50% 0%, rgba(255, 182, 39, 0.1), transparent 60%);
+        }
+
+        .wc-icon-glow svg {
+          filter: drop-shadow(0 0 16px rgba(255, 182, 39, 0.45));
+          animation: wc-icon-float 4s ease-in-out infinite;
+        }
+        @keyframes wc-icon-float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+
+        .wc-shimmer {
+          background: linear-gradient(90deg, #ffb627 0%, #ffd97d 30%, #f6f3fc 55%, #ffd97d 80%, #ffb627 100%);
+          background-size: 220% auto;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation: wc-shimmer-move 6s linear infinite;
+        }
+        @keyframes wc-shimmer-move {
+          to {
+            background-position: 200% center;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .wc-card,
+          .wc-icon-glow svg,
+          .wc-shimmer {
+            animation: none !important;
+          }
+        }
+      `}</style>
     </section>
   )
 }
