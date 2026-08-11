@@ -1,13 +1,26 @@
 // app/api/chat/route.js
 import { streamText, convertToModelMessages } from 'ai';
 import { CHAT_MODEL, SYSTEM_PROMPT, CHAT_CONFIG } from '@/lib/ai/config';
-import { searchCity, getForecast } from '@/services/weatherApi';
+import { searchCity, getCurrentWeather, getForecast } from '@/services/weatherApi';
 
 export const runtime = 'edge';
 export const maxDuration = 30;
 
 // Common trailing/leading words that aren't part of a city name
 const STOPWORDS = /\b(today|tomorrow|now|right now|please|weather|forecast|update|report)\b/gi;
+
+// Greetings and small talk that should never be treated as a city name
+const NON_CITY_WORDS = new Set([
+  'hi', 'hello', 'hey', 'yo', 'sup',
+  'thanks', 'thank you', 'thx', 'ty',
+  'ok', 'okay', 'yes', 'no', 'yep', 'nope',
+  'bye', 'goodbye', 'cool', 'nice', 'great',
+  'help', 'test',
+]);
+
+// Short confirmations that mean "yes, that city" -- when we see one of these
+// and can't extract a city from it, we look back at earlier messages instead.
+const AFFIRMATIONS = new Set(['yes', 'yeah', 'yep', 'yup', 'correct', 'right', 'sure', 'ok', 'okay']);
 
 function extractCity(text) {
   const cleaned = text.replace(/[?.!]/g, '').trim();
@@ -36,7 +49,8 @@ function extractCity(text) {
   // Pattern 4: message is just a bare city name (1-3 words, no question words)
   const bareWords = cleaned.split(/\s+/);
   const hasQuestionWord = /\b(what|how|why|when|will|should|is|are|do|does|can)\b/i.test(cleaned);
-  if (!hasQuestionWord && bareWords.length <= 3 && /^[a-zA-Z\s]+$/.test(cleaned)) {
+  const isNonCityWord = NON_CITY_WORDS.has(cleaned.toLowerCase());
+  if (!isNonCityWord && !hasQuestionWord && bareWords.length <= 3 && /^[a-zA-Z\s]+$/.test(cleaned)) {
     return cleaned.trim();
   }
 
@@ -63,7 +77,22 @@ export async function POST(req) {
     lastUserMessage?.parts?.map((p) => (p.type === 'text' ? p.text : '')).join('') || '';
 
   let weatherContext = '';
-  const cityGuess = extractCity(lastUserText);
+  let cityGuess = extractCity(lastUserText);
+
+  // If the user just confirmed ("yes"/"correct"/etc.) rather than naming a
+  // city, the real city name is in an earlier message -- walk back to find it.
+  if (!cityGuess && AFFIRMATIONS.has(lastUserText.trim().toLowerCase())) {
+    const userMessages = messages.filter((m) => m.role === 'user');
+    for (let i = userMessages.length - 2; i >= 0; i--) {
+      const text =
+        userMessages[i]?.parts?.map((p) => (p.type === 'text' ? p.text : '')).join('') || '';
+      const guess = extractCity(text);
+      if (guess) {
+        cityGuess = guess;
+        break;
+      }
+    }
+  }
 
   if (cityGuess) {
     try {
@@ -71,20 +100,21 @@ export async function POST(req) {
 
       if (cities.length > 0) {
         const city = cities[0];
-        const forecast = await withRetry(() => getForecast(city.latitude, city.longitude));
+        const [current, days] = await withRetry(() =>
+          Promise.all([
+            getCurrentWeather(city.latitude, city.longitude),
+            getForecast(city.latitude, city.longitude),
+          ])
+        );
 
-        const upcoming = forecast.daily
+        const upcoming = days
           .slice(0, 3)
           .map((d) => {
-            const uv = d.uvIndexMax != null ? `, UV index ${d.uvIndexMax}` : '';
-            const rain = d.precipitationChance != null ? `, ${d.precipitationChance}% chance of rain` : '';
-            return `${d.date}: ${d.temperatureMin}–${d.temperatureMax}°C${rain}${uv}`;
+            const uv = d.uvIndex != null ? `, UV index ${d.uvIndex}` : '';
+            const rain = d.precipitation != null ? `, ${d.precipitation}% chance of rain` : '';
+            return `${d.date}: ${d.tempMin}–${d.tempMax}°C${rain}${uv}`;
           })
           .join('; ');
-
-        const windDir = forecast.current?.windDirection != null
-          ? ` from ${forecast.current.windDirection}°`
-          : '';
 
         // If there were other close matches, mention them so the model can
         // clarify if the picked city seems wrong (e.g. ambiguous "Cambridge")
@@ -96,7 +126,7 @@ export async function POST(req) {
         weatherContext = `
 
 Live forecast data for ${city.name}, ${city.country}:
-Current: ${forecast.current?.temperature}°C, feels like ${forecast.current?.feelsLike}°C, humidity ${forecast.current?.humidity}%, wind ${forecast.current?.windSpeed} km/h${windDir}.
+Current: ${current.temperature}°C, feels like ${current.feelsLike}°C, humidity ${current.humidity}%, wind ${current.windSpeed} km/h.
 Next few days: ${upcoming}.
 Use these real numbers directly when answering -- don't say you can't see the data.${ambiguityNote}`;
       } else {
