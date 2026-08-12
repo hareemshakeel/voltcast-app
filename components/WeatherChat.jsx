@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useRef, useEffect, useState } from "react";
+import ForecastToolCard from "./ForecastToolCard";
 
 export default function WeatherChat() {
   const { messages, sendMessage, status, stop, error } = useChat({
@@ -65,21 +66,35 @@ export default function WeatherChat() {
         className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative"
       >
         {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
-                m.role === "user"
-                  ? "bg-amber-500 text-black rounded-br-sm"
-                  : "bg-white/10 text-white rounded-bl-sm"
-              }`}
-            >
-              {m.parts?.map((part, i) =>
-                part.type === "text" ? <span key={i}>{part.text}</span> : null
-              )}
-            </div>
+          <div key={m.id} className="space-y-2">
+            {m.parts?.map((part, i) => {
+              if (part.type === "tool-getForecast") {
+                return (
+                  <div key={i} className="flex justify-start">
+                    <ForecastToolCard part={part} />
+                  </div>
+                );
+              }
+
+              if (part.type !== "text") return null;
+
+              return (
+                <div
+                  key={i}
+                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                      m.role === "user"
+                        ? "bg-amber-500 text-black rounded-br-sm"
+                        : "bg-white/10 text-white rounded-bl-sm"
+                    }`}
+                  >
+                    {part.text}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
 
