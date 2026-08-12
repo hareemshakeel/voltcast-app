@@ -4,13 +4,20 @@ import { useChat } from "@ai-sdk/react";
 import { useRef, useEffect, useState } from "react";
 import ForecastToolCard from "./ForecastToolCard";
 
+const EXAMPLE_PROMPTS = [
+  "What's the forecast for tomorrow?",
+  "Is it a good day for a run?",
+  "How's the air quality right now?",
+];
+
 export default function WeatherChat() {
-  const { messages, sendMessage, status, stop, error } = useChat({
+  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     onError: (err) => {
-      console.error('Chat error:', err);
+      console.error("Chat error:", err);
     },
   });
   const [input, setInput] = useState("");
+  const [retrying, setRetrying] = useState(false);
 
   const scrollRef = useRef(null);
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
@@ -33,6 +40,12 @@ export default function WeatherChat() {
     }
   }, [messages, pinnedToBottom]);
 
+  useEffect(() => {
+    if (status !== "streaming" && status !== "submitted") {
+      setRetrying(false);
+    }
+  }, [status]);
+
   const jumpToLatest = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -49,9 +62,21 @@ export default function WeatherChat() {
     setInput("");
   };
 
+  const onRetry = () => {
+    if (retrying || isStreaming) return;
+    setRetrying(true);
+    regenerate();
+  };
+
+  const fillExample = (text) => {
+    setInput(text);
+  };
+
+  const isEmpty = messages.length === 0 && !error;
+
   return (
-    <div className="flex flex-col h-[70vh] max-h-[600px] w-full max-w-md mx-auto rounded-3xl border border-amber-400/20 bg-white/5 backdrop-blur-md overflow-hidden shadow-lg shadow-black/30">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-amber-400/10 bg-black/10">
+    <div className="flex flex-col h-[70dvh] max-h-[600px] w-full max-w-md mx-auto rounded-3xl border border-amber-400/20 bg-white/5 backdrop-blur-md overflow-hidden shadow-lg shadow-black/30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-amber-400/10 bg-black/10 shrink-0">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-xs font-medium text-emerald-400">
@@ -63,8 +88,28 @@ export default function WeatherChat() {
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative"
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3 relative"
       >
+        {isEmpty && (
+          <div className="h-full flex flex-col items-center justify-center text-center gap-4 px-4">
+            <p className="text-white/50 text-sm">
+              Ask me anything about the forecast, air quality, or planning
+              your day around the weather.
+            </p>
+            <div className="flex flex-col gap-2 w-full max-w-xs">
+              {EXAMPLE_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => fillExample(prompt)}
+                  className="text-left text-xs text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 rounded-xl px-3 py-2 transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((m) => (
           <div key={m.id} className="space-y-2">
             {m.parts?.map((part, i) => {
@@ -100,8 +145,18 @@ export default function WeatherChat() {
 
         {error && (
           <div className="flex justify-start">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl rounded-bl-sm px-4 py-2 text-sm text-red-300">
-              Something went wrong generating a response. This may be a temporary rate limit — please try again in a moment.
+            <div className="max-w-[80%] bg-red-500/10 border border-red-500/30 rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-red-300 space-y-2">
+              <p>
+                Something went wrong generating a response. This may be a
+                temporary rate limit — please try again.
+              </p>
+              <button
+                onClick={onRetry}
+                disabled={retrying || isStreaming}
+                className="text-xs font-medium bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 rounded-full px-3 py-1.5 transition-colors"
+              >
+                {retrying ? "Retrying…" : "Retry last message"}
+              </button>
             </div>
           </div>
         )}
@@ -130,7 +185,8 @@ export default function WeatherChat() {
 
       <form
         onSubmit={onSubmit}
-        className="flex items-center gap-2 border-t border-amber-400/10 p-3"
+        className="flex items-center gap-2 border-t border-amber-400/10 p-3 shrink-0"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <input
           value={input}

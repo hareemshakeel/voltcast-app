@@ -2,7 +2,7 @@ import WeatherChat from '@/components/WeatherChat';
 
 export default function AssistantPage() {
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-[#1a0b2e] to-[#10061f] flex flex-col items-center px-6 py-16 overflow-hidden">
+    <div className="relative min-h-dvh bg-gradient-to-b from-[#1a0b2e] to-[#10061f] flex flex-col items-center px-6 py-16 overflow-hidden">
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/10 blur-[120px] rounded-full" />
       <div className="pointer-events-none absolute top-20 right-1/3 w-[250px] h-[250px] bg-purple-500/10 blur-[100px] rounded-full" />
 
