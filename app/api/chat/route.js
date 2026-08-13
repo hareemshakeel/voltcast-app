@@ -9,7 +9,7 @@ export const maxDuration = 30;
 // Flip to true, restart dev server, send a real message from the UI, screenshot the result.
 // Flip back to false before you submit the checkpoint.
 const FORCE_MIDSTREAM_TEST = true;
-export async function POST(req) {
+
 export async function POST(req) {
   const url = new URL(req.url);
   const simulate = url.searchParams.get('simulate');
