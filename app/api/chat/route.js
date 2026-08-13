@@ -8,7 +8,7 @@ export const maxDuration = 30;
 // Sabotage toggle for Test 2 (mid-stream failure).
 // Flip to true, restart dev server, send a real message from the UI, screenshot the result.
 // Flip back to false before you submit the checkpoint.
-const FORCE_MIDSTREAM_TEST = true;
+const FORCE_MIDSTREAM_TEST = false;
 
 export async function POST(req) {
   const url = new URL(req.url);
