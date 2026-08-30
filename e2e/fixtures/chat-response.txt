@@ -1,0 +1,67 @@
+﻿data: {"type":"start"}
+
+data: {"type":"start-step"}
+
+data: {"type":"reasoning-start","id":"reasoning-0"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":"User"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" wants"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" a"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" short"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" one"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":"-s"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":"entence"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" hello"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":"."}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" Follow"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":" tone"}
+
+data: {"type":"reasoning-delta","id":"reasoning-0","delta":"."}
+
+data: {"type":"reasoning-end","id":"reasoning-0"}
+
+data: {"type":"text-start","id":"txt-0"}
+
+data: {"type":"text-delta","id":"txt-0","delta":"Hello"}
+
+data: {"type":"text-delta","id":"txt-0","delta":"!"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" How"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" can"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" I"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" help"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" you"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" with"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" the"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" weather"}
+
+data: {"type":"text-delta","id":"txt-0","delta":" today"}
+
+data: {"type":"text-delta","id":"txt-0","delta":"?"}
+
+data: {"type":"text-end","id":"txt-0"}
+
+data: {"type":"finish-step"}
+
+data: {"type":"finish","finishReason":"stop"}
+
+data: [DONE]
+
+
