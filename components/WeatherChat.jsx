@@ -155,7 +155,7 @@ export default function WeatherChat() {
                 disabled={retrying || isStreaming}
                 className="text-xs font-medium bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 rounded-full px-3 py-1.5 transition-colors"
               >
-                {retrying ? "Retrying…" : "Retry last message"}
+              {retrying ? "Retrying…" : "Retry last message"}
               </button>
             </div>
           </div>
