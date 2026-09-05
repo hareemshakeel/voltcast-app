@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { CloudSun, CalendarDays, HeartPulse, ArrowRight, Cloud, Sun, CloudRain, Wind, Droplets, Gauge } from 'lucide-react'
 import SearchBar from './SearchBar'
@@ -45,10 +46,6 @@ const trustStats = [
   { value: '99.9', label: 'percent uptime', suffix: '%' },
 ]
 
-// FIX: cache the hero element's rect once (updated only on resize) instead
-// of calling getBoundingClientRect() on every mousemove, and throttle the
-// state update to once per animation frame instead of once per raw event.
-// This was the main cause of "Forced reflow" / long main-thread tasks.
 function CursorSpotlight() {
   const [pos, setPos] = useState({ x: 50, y: 25 })
   const rectRef = useRef(null)
@@ -190,10 +187,10 @@ function SkeletonCard() {
   )
 }
 
-// FIX: mousemove no longer calls getBoundingClientRect() directly on every
-// event. The rect is only read once per animation frame (via rAF), and only
-// while actually inside the capsule, cutting forced-reflow calls drastically.
-function WeatherOrb() {
+// Renamed from WeatherOrb to WeatherOrbImpl — this is now lazy-loaded below
+// via next/dynamic so its JS (mouse-tilt logic, rotation interval, etc.)
+// doesn't need to hydrate as part of the critical first-load bundle.
+function WeatherOrbImpl() {
   const [index, setIndex] = useState(0)
   const [fade, setFade] = useState(true)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
@@ -316,6 +313,11 @@ function WeatherOrb() {
     </div>
   )
 }
+
+// Lazy-loaded wrapper: WeatherOrb's JS is now only fetched/hydrated on the
+// client, after the critical page content is ready, instead of shipping as
+// part of the initial homepage bundle.
+const WeatherOrb = dynamic(() => Promise.resolve(WeatherOrbImpl), { ssr: false })
 
 function HighlightCard({ h, i }) {
   const Icon = h.icon
