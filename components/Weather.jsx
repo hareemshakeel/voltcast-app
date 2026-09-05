@@ -105,6 +105,22 @@ function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
   )
 }
 
+// Decorative animations (blurred blobs, rotating borders, pulsing icons) are
+// expensive to composite. Starting them immediately competes with hydration
+// and first paint, which is fine on a fast desktop CPU but shows up as heavy
+// main-thread work / TBT on throttled mobile devices. Deferring them by one
+// idle tick lets the page paint first, then lets the decoration kick in.
+function useDeferredMotion() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200))
+    const cancelIdle = window.cancelIdleCallback || clearTimeout
+    const id = idle(() => setReady(true))
+    return () => cancelIdle(id)
+  }, [])
+  return ready
+}
+
 function useInView(threshold = 0.2) {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
@@ -147,8 +163,10 @@ function WeatherOrb() {
   const [fade, setFade] = useState(true)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const capsuleRef = useRef(null)
+  const motionReady = useDeferredMotion()
 
   useEffect(() => {
+    if (!motionReady) return
     const id = setInterval(() => {
       setFade(false)
       setTimeout(() => {
@@ -157,7 +175,7 @@ function WeatherOrb() {
       }, 350)
     }, 3800)
     return () => clearInterval(id)
-  }, [])
+  }, [motionReady])
 
   function handleMouseMove(e) {
     const rect = capsuleRef.current.getBoundingClientRect()
@@ -184,7 +202,10 @@ function WeatherOrb() {
         className="vc-capsule relative overflow-hidden rounded-[28px] px-7 py-8 transition-transform duration-200 ease-out"
         style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
       >
-        <div className="vc-capsule-border absolute inset-0 rounded-[28px]" />
+        <div
+          className="vc-capsule-border absolute inset-0 rounded-[28px]"
+          style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
+        />
         <div className="vc-capsule-sheen pointer-events-none absolute inset-0" />
 
         <div
@@ -192,7 +213,10 @@ function WeatherOrb() {
             fade ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'
           }`}
         >
-          <div className="vc-capsule-icon flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl">
+          <div
+            className="vc-capsule-icon flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl"
+            style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
+          >
             <CityIcon size={34} strokeWidth={1.3} className="text-[#FFD97D]" />
           </div>
           <div className="min-w-0 text-left">
@@ -268,6 +292,7 @@ function App() {
   const [searchedCity, setSearchedCity] = useState(false)
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false)
   const [hasSearchInput, setHasSearchInput] = useState(false)
+  const motionReady = useDeferredMotion()
 
   async function handleSelectCity(city) {
     setSearchedCity(true)
@@ -303,9 +328,18 @@ function App() {
       className="relative min-h-[calc(100vh-64px)] overflow-hidden bg-[#0B0A1A] px-5 pb-24 pt-14 sm:px-8 lg:pt-20"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="vc-blob vc-blob--amber absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full" />
-        <div className="vc-blob vc-blob--violet absolute top-[10%] right-[4%] h-[360px] w-[360px] rounded-full" />
-        <div className="vc-blob vc-blob--blue absolute bottom-[-10%] left-[30%] h-[460px] w-[460px] rounded-full" />
+        <div
+          className="vc-blob vc-blob--amber absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full"
+          style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
+        />
+        <div
+          className="vc-blob vc-blob--violet absolute top-[10%] right-[4%] h-[360px] w-[360px] rounded-full"
+          style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
+        />
+        <div
+          className="vc-blob vc-blob--blue absolute bottom-[-10%] left-[30%] h-[460px] w-[460px] rounded-full"
+          style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
+        />
 
         <svg className="absolute inset-0 h-full w-full opacity-[0.05]">
           <filter id="vc-grain">
@@ -468,7 +502,7 @@ function App() {
           50% { opacity: 1; transform: scale(1.03); }
         }
 
-        .vc-blob { filter: blur(90px); opacity: 0.35; animation: vc-blob-drift 16s ease-in-out infinite; }
+        .vc-blob { filter: blur(60px); opacity: 0.35; animation: vc-blob-drift 16s ease-in-out infinite; animation-play-state: paused; }
         .vc-blob--amber { background: radial-gradient(circle, #FFB627, transparent 70%); animation-delay: 0s; }
         .vc-blob--violet { background: radial-gradient(circle, #7C3AED, transparent 70%); animation-delay: -5s; }
         .vc-blob--blue { background: radial-gradient(circle, #3B82F6, transparent 70%); animation-delay: -10s; }
@@ -538,6 +572,7 @@ function App() {
           -webkit-mask-composite: xor;
           mask-composite: exclude;
           animation: vc-border-spin 8s linear infinite;
+          animation-play-state: paused;
         }
         @keyframes vc-border-spin { to { transform: rotate(360deg); } }
 
@@ -549,6 +584,7 @@ function App() {
           background: radial-gradient(circle at 35% 30%, rgba(255,182,39,0.22), rgba(255,182,39,0.04) 70%);
           box-shadow: inset 0 0 0 1px rgba(255,182,39,0.22);
           animation: vc-icon-float 4s ease-in-out infinite, vc-icon-pulse 3.8s ease-in-out infinite;
+          animation-play-state: paused;
         }
         @keyframes vc-icon-float {
           0%, 100% { transform: translateY(0); }
