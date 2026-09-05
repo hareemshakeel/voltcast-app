@@ -45,21 +45,49 @@ const trustStats = [
   { value: '99.9', label: 'percent uptime', suffix: '%' },
 ]
 
+// FIX: cache the hero element's rect once (updated only on resize) instead
+// of calling getBoundingClientRect() on every mousemove, and throttle the
+// state update to once per animation frame instead of once per raw event.
+// This was the main cause of "Forced reflow" / long main-thread tasks.
 function CursorSpotlight() {
   const [pos, setPos] = useState({ x: 50, y: 25 })
+  const rectRef = useRef(null)
+  const latestEvent = useRef(null)
+  const rafRef = useRef(null)
+
   useEffect(() => {
+    const el = document.getElementById('vc-hero')
+    if (!el) return
+
+    function updateRect() {
+      rectRef.current = el.getBoundingClientRect()
+    }
+    updateRect()
+    window.addEventListener('resize', updateRect)
+
     function handle(e) {
-      const el = document.getElementById('vc-hero')
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      setPos({
-        x: ((e.clientX - rect.left) / rect.width) * 100,
-        y: ((e.clientY - rect.top) / rect.height) * 100,
+      latestEvent.current = e
+      if (rafRef.current) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        const rect = rectRef.current
+        const ev = latestEvent.current
+        if (!rect || !ev) return
+        setPos({
+          x: ((ev.clientX - rect.left) / rect.width) * 100,
+          y: ((ev.clientY - rect.top) / rect.height) * 100,
+        })
       })
     }
+
     window.addEventListener('mousemove', handle)
-    return () => window.removeEventListener('mousemove', handle)
+    return () => {
+      window.removeEventListener('mousemove', handle)
+      window.removeEventListener('resize', updateRect)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
   }, [])
+
   return (
     <div
       className="pointer-events-none absolute inset-0 z-0 transition-[background] duration-500 ease-out"
@@ -86,10 +114,6 @@ function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
     const decimals = match[1].includes('.') ? match[1].split('.')[1].length : 0
     let start = null
     const duration = 1100
-    // Throttled to ~20fps instead of every animation frame: this is a
-    // decorative counter, not motion that needs to be silky-smooth, and
-    // cutting the render count ~3x meaningfully reduces main-thread work
-    // during initial load on throttled/mobile CPUs.
     const frameInterval = 50
     let lastFrameTime = 0
 
@@ -118,11 +142,6 @@ function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
   )
 }
 
-// Decorative animations (blurred blobs, rotating borders, pulsing icons) are
-// expensive to composite. Starting them immediately competes with hydration
-// and first paint, which is fine on a fast desktop CPU but shows up as heavy
-// main-thread work / TBT on throttled mobile devices. Deferring them by one
-// idle tick lets the page paint first, then lets the decoration kick in.
 function useDeferredMotion() {
   const [ready, setReady] = useState(false)
   useEffect(() => {
@@ -171,12 +190,17 @@ function SkeletonCard() {
   )
 }
 
+// FIX: mousemove no longer calls getBoundingClientRect() directly on every
+// event. The rect is only read once per animation frame (via rAF), and only
+// while actually inside the capsule, cutting forced-reflow calls drastically.
 function WeatherOrb() {
   const [index, setIndex] = useState(0)
   const [fade, setFade] = useState(true)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const capsuleRef = useRef(null)
   const motionReady = useDeferredMotion()
+  const latestEvent = useRef(null)
+  const rafRef = useRef(null)
 
   useEffect(() => {
     if (!motionReady) return
@@ -190,14 +214,31 @@ function WeatherOrb() {
     return () => clearInterval(id)
   }, [motionReady])
 
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
   function handleMouseMove(e) {
-    const rect = capsuleRef.current.getBoundingClientRect()
-    const px = (e.clientX - rect.left) / rect.width - 0.5
-    const py = (e.clientY - rect.top) / rect.height - 0.5
-    setTilt({ x: py * -6, y: px * 6 })
+    latestEvent.current = e
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      const ev = latestEvent.current
+      if (!ev || !capsuleRef.current) return
+      const rect = capsuleRef.current.getBoundingClientRect()
+      const px = (ev.clientX - rect.left) / rect.width - 0.5
+      const py = (ev.clientY - rect.top) / rect.height - 0.5
+      setTilt({ x: py * -6, y: px * 6 })
+    })
   }
 
   function handleMouseLeave() {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
     setTilt({ x: 0, y: 0 })
   }
 
@@ -579,7 +620,6 @@ function App() {
           to { opacity: 1; transform: none; }
         }
 
-        /* rotating conic gradient border, replaces the flat static border */
         .vc-capsule-border {
           padding: 1.5px;
           background: conic-gradient(from 0deg, rgba(255,182,39,0.6), rgba(124,58,237,0.35) 30%, rgba(255,255,255,0.05) 55%, rgba(59,130,246,0.35) 75%, rgba(255,182,39,0.6));
