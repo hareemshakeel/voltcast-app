@@ -8,11 +8,12 @@ export const maxDuration = 30;
 // Sabotage toggle for Test 2 (mid-stream failure).
 // Flip to true, restart dev server, send a real message from the UI, screenshot the result.
 // Flip back to false before you submit the checkpoint.
-const FORCE_MIDSTREAM_TEST = false;
+// Forced off in production regardless of this value, as a safety net.
+const FORCE_MIDSTREAM_TEST = process.env.NODE_ENV !== 'production' && false;
 
 export async function POST(req) {
   const url = new URL(req.url);
-  const simulate = url.searchParams.get('simulate');
+  const simulate = process.env.NODE_ENV !== 'production' ? url.searchParams.get('simulate') : null;
 
   let body;
   try {
