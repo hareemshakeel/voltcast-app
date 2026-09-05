@@ -352,7 +352,7 @@ function App() {
               Real-time weather, air quality, and UV insight for any city on Earth.
             </p>
 
-            <div className="vc-in mt-9 flex w-full justify-center lg:justify-start" style={{ animationDelay: '140ms' }}>
+            <div className="vc-in relative z-30 mt-9 flex w-full justify-center lg:justify-start" style={{ animationDelay: '140ms' }}>
               <div className="vc-glow relative w-full max-w-sm">
                 <SearchBar
                   onSelectCity={handleSelectCity}
@@ -384,7 +384,7 @@ function App() {
           )}
         </div>
 
-        <div className={`flex w-full flex-col items-center ${showIntro ? 'mt-12' : 'mt-8'}`}>
+        <div className={`relative z-0 flex w-full flex-col items-center ${showIntro ? 'mt-12' : 'mt-8'}`}>
           {isLoading && <SkeletonCard />}
 
           {!isLoading && error && (
