@@ -72,8 +72,10 @@ function CursorSpotlight() {
 
 function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
   const [display, setDisplay] = useState('0')
+  const motionReady = useDeferredMotion()
 
   useEffect(() => {
+    if (!motionReady) return
     const match = String(value).match(/^([\d.]+)(.*)$/)
     if (!match) {
       setDisplay(value)
@@ -84,9 +86,20 @@ function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
     const decimals = match[1].includes('.') ? match[1].split('.')[1].length : 0
     let start = null
     const duration = 1100
+    // Throttled to ~20fps instead of every animation frame: this is a
+    // decorative counter, not motion that needs to be silky-smooth, and
+    // cutting the render count ~3x meaningfully reduces main-thread work
+    // during initial load on throttled/mobile CPUs.
+    const frameInterval = 50
+    let lastFrameTime = 0
 
     function step(ts) {
       if (start === null) start = ts
+      if (ts - lastFrameTime < frameInterval) {
+        requestAnimationFrame(step)
+        return
+      }
+      lastFrameTime = ts
       const progress = Math.min((ts - start) / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
       setDisplay(`${(target * eased).toFixed(decimals)}${trailing}${suffix}`)
@@ -95,7 +108,7 @@ function AnimatedStat({ value, suffix = '', label, delay = 0 }) {
 
     const timeout = setTimeout(() => requestAnimationFrame(step), delay)
     return () => clearTimeout(timeout)
-  }, [value, suffix, delay])
+  }, [value, suffix, delay, motionReady])
 
   return (
     <div className="text-left">
@@ -341,13 +354,15 @@ function App() {
           style={{ animationPlayState: motionReady ? 'running' : 'paused' }}
         />
 
-        <svg className="absolute inset-0 h-full w-full opacity-[0.05]">
-          <filter id="vc-grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n" />
-            <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#vc-grain)" />
-        </svg>
+        {motionReady && (
+          <svg className="absolute inset-0 h-full w-full opacity-[0.05]">
+            <filter id="vc-grain">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n" />
+              <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#vc-grain)" />
+          </svg>
+        )}
 
         {floaters.map((f, i) => (
           <f.Icon
