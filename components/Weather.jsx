@@ -187,14 +187,12 @@ function SkeletonCard() {
   )
 }
 
-// Renamed from WeatherOrb to WeatherOrbImpl — this is now lazy-loaded below
-// via next/dynamic so its JS (mouse-tilt logic, rotation interval, etc.)
-// doesn't need to hydrate as part of the critical first-load bundle.
 function WeatherOrbImpl() {
   const [index, setIndex] = useState(0)
   const [fade, setFade] = useState(true)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const capsuleRef = useRef(null)
+  const capsuleRectRef = useRef(null)
   const motionReady = useDeferredMotion()
   const latestEvent = useRef(null)
   const rafRef = useRef(null)
@@ -217,14 +215,24 @@ function WeatherOrbImpl() {
     }
   }, [])
 
+  function refreshRect() {
+    if (capsuleRef.current) {
+      capsuleRectRef.current = capsuleRef.current.getBoundingClientRect()
+    }
+  }
+
+  function handleMouseEnter() {
+    refreshRect()
+  }
+
   function handleMouseMove(e) {
     latestEvent.current = e
     if (rafRef.current) return
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null
       const ev = latestEvent.current
-      if (!ev || !capsuleRef.current) return
-      const rect = capsuleRef.current.getBoundingClientRect()
+      const rect = capsuleRectRef.current
+      if (!ev || !rect) return
       const px = (ev.clientX - rect.left) / rect.width - 0.5
       const py = (ev.clientY - rect.top) / rect.height - 0.5
       setTilt({ x: py * -6, y: px * 6 })
@@ -248,6 +256,7 @@ function WeatherOrbImpl() {
 
       <div
         ref={capsuleRef}
+        onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="vc-capsule relative overflow-hidden rounded-[28px] px-7 py-8 transition-transform duration-200 ease-out"
@@ -314,10 +323,10 @@ function WeatherOrbImpl() {
   )
 }
 
-// Lazy-loaded wrapper: WeatherOrb's JS is now only fetched/hydrated on the
-// client, after the critical page content is ready, instead of shipping as
-// part of the initial homepage bundle.
-const WeatherOrb = dynamic(() => Promise.resolve(WeatherOrbImpl), { ssr: false })
+const WeatherOrb = dynamic(() => Promise.resolve(WeatherOrbImpl), {
+  ssr: false,
+  loading: () => <div className="mx-auto w-full max-w-[320px]" style={{ minHeight: 320 }} />,
+})
 
 function HighlightCard({ h, i }) {
   const Icon = h.icon
